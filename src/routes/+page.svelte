@@ -20,6 +20,7 @@
 		value: string;
 	}
 	interface RequestInterface {
+		id: number;
 		method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 		url: string;
 		headers: Header[];
@@ -27,6 +28,7 @@
 	}
 
 	const baseFormFields: RequestInterface = {
+		id: 0,
 		method: 'GET',
 		url: '',
 		headers: [{ key: '', value: '' }],
@@ -37,6 +39,8 @@
 	let formFields = $state<RequestInterface>(baseFormFields);
 	let showParallelCurls = $state<boolean>(false);
 	let clipboardStatusText = $state<string>('Copy to Clipboard');
+	let currentId = $state<number>(new Date().getTime());
+	let editingId = $state<number>();
 
 	onMount(() => {
 		requests = JSON.parse(window.localStorage.getItem('requests') || '[]');
@@ -48,6 +52,7 @@
 		requests.map((request) => {
 			let headerMap: Record<string, string> = {};
 			request.headers.forEach((header) => {
+				if (!header.key || !header.value) return;
 				headerMap[header.key] = header.value;
 			});
 			return CurlGenerator(
@@ -58,22 +63,48 @@
 					body: request.body
 				},
 				{
-					silent: true
+					silent: true,
+                    output: '/dev/null'
 				}
 			);
 		})
 	);
 
-	const parallelCurls = $derived<string>(curls.join(' & \n') + '\nwait' + '\necho "Done!"');
+	const parallelCurls = $derived<string>(curls.join(' & \n') + '\nwait' + '\necho "Done"');
 
-	function addRequest(clearForm: boolean) {
-		requests.push({ ...formFields });
+	function setEditRequest(id: number) {
+		let existingRequest = requests.find((request) => request.id === id);
+		if (!existingRequest) {
+			return;
+		}
+		formFields = JSON.parse(JSON.stringify(existingRequest)) as RequestInterface;
+		editingId = id;
+	}
 
+	function submitRequest(clearForm: boolean) {
+		if (!editingId) {
+			requests.push({ ...formFields, id: ++currentId });
+		} else {
+			// FInd the record and alter it;
+			requests = requests.map((request) => {
+				if (request.id === editingId) {
+					return { ...formFields, id: request.id };
+				}
+				return request;
+			});
+		}
+		window.localStorage.setItem('requests', JSON.stringify(requests));
 		if (clearForm) {
 			formFields = { ...baseFormFields };
+			editingId = undefined;
 		}
+		editingId = undefined;
+	}
 
-		window.localStorage.setItem('requests', JSON.stringify(requests));
+	function handleRemoveRequest(id: number) {
+		if (confirm('Are you sure you want to remove this request?')) {
+			requests = requests.filter((request) => request.id !== id);
+		}
 	}
 
 	function copyToClipboard() {
@@ -104,8 +135,8 @@
 			>
 		</p>
 	</div>
-	<div class="rounded-lg bg-gray-200 p-2">
-		<h2 class="my-1 text-xl font-bold">Build Requests</h2>
+	<div class="rounded-2xl bg-gray-200 p-4">
+		<h2 class="mb-3 text-xl font-bold">Build Request</h2>
 		<div class="mb-1">
 			<label for="method" class="block text-sm font-medium text-gray-900">Method</label>
 			<select
@@ -113,7 +144,7 @@
 				required
 				id="method"
 				name="method"
-				class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+				class="mt-1.5 w-full rounded-2xl border-gray-300 text-gray-700 sm:text-sm"
 			>
 				{#each HTTP_METHODS as method}
 					<option value={method}>{method}</option>
@@ -129,7 +160,7 @@
 				type="text"
 				id="url"
 				name="url"
-				class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+				class="mt-1.5 w-full rounded-2xl border-gray-300 text-gray-700 sm:text-sm"
 			/>
 		</div>
 
@@ -144,7 +175,7 @@
 						id={`headers-key-${index}`}
 						placeholder="Key"
 						name="headers"
-						class="w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+						class="w-full rounded-2xl border-gray-300 text-gray-700 sm:text-sm"
 					/>
 					<input
 						bind:value={header.value}
@@ -153,12 +184,12 @@
 						id={`headers-value-${index}`}
 						placeholder="Value"
 						name="headers"
-						class="w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+						class="w-full rounded-2xl border-gray-300 text-gray-700 sm:text-sm"
 					/>
 					{#if formFields.headers.length > 1}
 						<button
 							type="button"
-							class="inline-block rounded border text-sm focus:outline-none focus:ring"
+							class="inline-block rounded-2xl border text-sm focus:outline-none focus:ring"
 							onclick={() => formFields.headers.splice(index, 1)}
 							aria-label="Remove"
 						>
@@ -182,7 +213,7 @@
 			{/each}
 			<button
 				type="button"
-				class="mt-1 inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+				class="mt-1 inline-block rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
 				onclick={() => formFields.headers.push({ key: '', value: '' })}>Add Header</button
 			>
 		</div>
@@ -191,7 +222,7 @@
 			<label for="body" class="block text-sm font-medium text-gray-900">Body</label>
 			<textarea
 				bind:value={formFields.body}
-				class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+				class="mt-1.5 w-full rounded-2xl border-gray-300 text-gray-700 sm:text-sm"
 				id="body"
 				rows="3"
 			></textarea>
@@ -200,19 +231,28 @@
 		<div class="flex justify-between">
 			<button
 				disabled={!canSubmit}
-				class="inline-block rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
-				onclick={() => addRequest(true)}>Add Request & Clear</button
+				class="inline-block rounded-2xl border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+				onclick={() => submitRequest(true)}
+				>{editingId ? 'Update & Clear' : 'Submit & Clear'}</button
 			>
 			<button
 				disabled={!canSubmit}
-				class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring disabled:opacity-50"
-				onclick={() => addRequest(false)}>Add Request</button
+				class="inline-block rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring disabled:opacity-50"
+				onclick={() => submitRequest(false)}
 			>
+				{editingId ? 'Update' : 'Submit'}
+			</button>
 		</div>
 	</div>
 
-	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<h2 class="my-1 text-xl font-bold">Parallel Requests Script</h2>
+	<div class="mt-4 rounded-2xl bg-gray-200 px-4 py-2">
+		<div class="my-2 flex justify-between">
+			<h2 class="text-xl font-bold">Requests</h2>
+			<button
+				class="inline-block h-fit rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+				onclick={resetRequests}>Clear All Requests</button
+			>
+		</div>
 		<div>
 			{#if requests.length === 0}
 				No Requests added yet, add at least 1 (or two to, you know, make this worthwhile) first.
@@ -220,11 +260,11 @@
 				<div class="flex gap-2">
 					<button
 						onclick={() => (showParallelCurls = !showParallelCurls)}
-						class="inline-block flex-1 rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
-						type="submit">Show Content</button
+						class="inline-block flex-1 rounded-2xl border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+						type="submit">Show Script Contents</button
 					>
 					<button
-						class="inline-block flex-1 rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+						class="inline-block flex-1 rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
 						onclick={copyToClipboard}>{clipboardStatusText}</button
 					>
 				</div>
@@ -233,23 +273,49 @@
 				{/if}
 			{/if}
 		</div>
-	</div>
-
-	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<div class="flex">
-			<h2 class="my-1 flex-grow text-xl font-bold">Requests</h2>
-			<button
-				class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
-				onclick={resetRequests}>Clear</button
-			>
-		</div>
-		<div class="grid grid-cols-2 gap-2">
-			{#if requests.length === 0}
-				No Requests added yet
-			{/if}
+		<div class="mt-3 grid grid-cols-2 gap-2">
 			{#each requests as request, index}
-				<div class="my-2 divide-y rounded-lg bg-gray-300 p-2">
-					<div class="py-1">
+				<div class="my-2 divide-y rounded-2xl bg-gray-300 p-2">
+					<div class="relative py-1">
+						<div class="absolute right-1 top-1">
+							<button class="" onclick={() => setEditRequest(request.id)} aria-label="Edit">
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-6"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+									/>
+								</svg>
+							</button>
+							<button
+								type="button"
+								class="inline-block rounded-2xl text-sm focus:outline-none focus:ring"
+								onclick={() => handleRemoveRequest(request.id)}
+								aria-label="Remove"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke-width="1.5"
+									stroke="currentColor"
+									class="size-6"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+									/>
+								</svg>
+							</button>
+						</div>
 						<h3 class="font-bold">{request.url}</h3>
 						<h4 class="text-xs">{request.method}</h4>
 						{#if request.body}
