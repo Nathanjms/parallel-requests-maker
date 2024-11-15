@@ -71,8 +71,6 @@
 
 			requests = json.requests;
 
-			console.log({ json });
-
 			setRequestsFromRestore(requests);
 		} catch (error) {
 			restore.error = 'An Error Occurred!';

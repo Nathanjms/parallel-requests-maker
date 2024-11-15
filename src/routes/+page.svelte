@@ -55,7 +55,7 @@
 					method: request.method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 					url: request.url,
 					headers: headerMap,
-					body: request.body
+					body: request.body.replace(/"/g, '\\"'), // The library always uses double quotes, so escape all in the body here
 				},
 				{
 					silent: true,
@@ -341,12 +341,12 @@
 							<h3 class="font-bold">{request.url}</h3>
 							<h4 class="text-xs">{request.method}</h4>
 							{#if request.body}
-								<pre class="text-xs">{request.body.substring(0, 100) +
+								<pre class="overflow-auto text-xs">{request.body.substring(0, 100) +
 										(request.body.length > 100 ? '...' : '')}</pre>
 							{/if}
 						</div>
 						<div class="py-1">
-							<pre class="text-xs">{curls[index]}</pre>
+							<pre class="overflow-auto text-xs">{curls[index]}</pre>
 						</div>
 					</div>
 				{/each}
