@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { RequestInterface } from '$lib/interfaces';
+	import TheSettings from '$lib/TheSettings.svelte';
 	import { CurlGenerator } from 'curl-generator';
 	import { onMount } from 'svelte';
 	// define type for the requests:
@@ -15,17 +17,6 @@
 		'text/html',
 		'application/xml'
 	]);
-	interface Header {
-		key: string;
-		value: string;
-	}
-	interface RequestInterface {
-		id: number;
-		method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-		url: string;
-		headers: Header[];
-		body: any;
-	}
 
 	const baseFormFields: RequestInterface = {
 		id: 0,
@@ -129,6 +120,10 @@
 			requests = [];
 			window.localStorage.removeItem('requests');
 		}
+	}
+
+	function setRequestsFromRestore(newRequests: RequestInterface[]) {
+		requests = JSON.parse(JSON.stringify(newRequests));
 	}
 </script>
 
@@ -344,7 +339,8 @@
 							<h3 class="font-bold">{request.url}</h3>
 							<h4 class="text-xs">{request.method}</h4>
 							{#if request.body}
-								<pre class="text-xs">{request.body.substring(0, 100) + '...'}</pre>
+								<pre class="text-xs">{request.body.substring(0, 100) +
+										(request.body.length > 100 ? '...' : '')}</pre>
 							{/if}
 						</div>
 						<div class="py-1">
@@ -354,6 +350,11 @@
 				{/each}
 			</div>
 		</div>
+	</div>
+
+	<div class="mt-4 rounded-2xl bg-gray-200 px-4 py-2">
+		<h2 class="mb-2 text-xl font-bold">Settings</h2>
+		<TheSettings {requests} {setRequestsFromRestore} />
 	</div>
 
 	<datalist id="headerKeyList">
