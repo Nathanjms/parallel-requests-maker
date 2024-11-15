@@ -124,6 +124,8 @@
 
 	function setRequestsFromRestore(newRequests: RequestInterface[]) {
 		requests = JSON.parse(JSON.stringify(newRequests));
+
+		window.localStorage.setItem('requests', JSON.stringify(requests));
 	}
 </script>
 
