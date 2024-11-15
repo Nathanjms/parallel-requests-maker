@@ -1,2 +1,27 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	import { CurlGenerator } from 'curl-generator';
+	// define type for the requests:
+    interface RequestInterface {
+        method: string;
+        url: string;
+        headers: [];
+        body: string;
+    }
+
+	const requests: RequestInterface[] = [];
+
+    const formFields: RequestInterface = {
+        method: 'GET',
+        url: '',
+        headers: [],
+        body: '',
+    }
+
+    function addRequest() {
+        
+    }
+</script>
+
+<div class="container">
+    <form on:submit|preventDefault=addRequest>
+</div>
