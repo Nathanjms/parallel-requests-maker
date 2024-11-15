@@ -42,6 +42,10 @@
 	let currentId = $state<number>(new Date().getTime());
 	let editingId = $state<number>();
 
+	let curlOptions = $state({
+		suppressOutput: true
+	});
+
 	onMount(() => {
 		requests = JSON.parse(window.localStorage.getItem('requests') || '[]');
 	});
@@ -64,7 +68,7 @@
 				},
 				{
 					silent: true,
-                    output: '/dev/null'
+					...(curlOptions.suppressOutput ? { output: '/dev/null' } : {})
 				}
 			);
 		})
@@ -105,6 +109,10 @@
 		if (confirm('Are you sure you want to remove this request?')) {
 			requests = requests.filter((request) => request.id !== id);
 		}
+	}
+
+	function clearForm() {
+		formFields = JSON.parse(JSON.stringify(baseFormFields)) as RequestInterface;
 	}
 
 	function copyToClipboard() {
@@ -229,34 +237,49 @@
 		</div>
 
 		<div class="flex justify-between">
-			<button
-				disabled={!canSubmit}
-				class="inline-block rounded-2xl border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
-				onclick={() => submitRequest(true)}
-				>{editingId ? 'Update & Clear' : 'Submit & Clear'}</button
-			>
-			<button
-				disabled={!canSubmit}
-				class="inline-block rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring disabled:opacity-50"
-				onclick={() => submitRequest(false)}
-			>
-				{editingId ? 'Update' : 'Submit'}
-			</button>
+			<div>
+				<button
+					class="inline-block rounded-2xl border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+					onclick={clearForm}>Clear</button
+				>
+			</div>
+			<div>
+				<button
+					disabled={!canSubmit}
+					class="inline-block rounded-2xl border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+					onclick={() => submitRequest(true)}
+					>{editingId ? 'Update & Clear' : 'Submit & Clear'}</button
+				>
+				<button
+					disabled={!canSubmit}
+					class="inline-block rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring disabled:opacity-50"
+					onclick={() => submitRequest(false)}
+				>
+					{editingId ? 'Update' : 'Submit'}
+				</button>
+			</div>
 		</div>
 	</div>
 
 	<div class="mt-4 rounded-2xl bg-gray-200 px-4 py-2">
 		<div class="my-2 flex justify-between">
-			<h2 class="text-xl font-bold">Requests</h2>
+			<h2 class="text-xl font-bold">Requests/Curls</h2>
 			<button
 				class="inline-block h-fit rounded-2xl border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
 				onclick={resetRequests}>Clear All Requests</button
 			>
 		</div>
-		<div>
+		<div class="mb-1">
 			{#if requests.length === 0}
 				No Requests added yet, add at least 1 (or two to, you know, make this worthwhile) first.
 			{:else}
+				<div class="my-1 rounded-2xl bg-slate-100 p-3 text-sm">
+					<h3 class="text-lg">Options</h3>
+					<div>
+						<input type="checkbox" id="suppressOutput" bind:checked={curlOptions.suppressOutput} />
+						<label for="suppressOutput">Suppress Output</label>
+					</div>
+				</div>
 				<div class="flex gap-2">
 					<button
 						onclick={() => (showParallelCurls = !showParallelCurls)}
@@ -273,60 +296,63 @@
 				{/if}
 			{/if}
 		</div>
-		<div class="mt-3 grid grid-cols-2 gap-2">
-			{#each requests as request, index}
-				<div class="my-2 divide-y rounded-2xl bg-gray-300 p-2">
-					<div class="relative py-1">
-						<div class="absolute right-1 top-1">
-							<button class="" onclick={() => setEditRequest(request.id)} aria-label="Edit">
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="1.5"
-									stroke="currentColor"
-									class="size-6"
+		<div>
+			<h3 class="text-lg">Requests</h3>
+			<div class="grid grid-cols-2 gap-2">
+				{#each requests as request, index}
+					<div class="my-2 divide-y rounded-2xl bg-gray-300 p-2">
+						<div class="relative py-1">
+							<div class="absolute right-1 top-1">
+								<button class="" onclick={() => setEditRequest(request.id)} aria-label="Edit">
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke-width="1.5"
+										stroke="currentColor"
+										class="size-6"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+										/>
+									</svg>
+								</button>
+								<button
+									type="button"
+									class="inline-block rounded-2xl text-sm focus:outline-none focus:ring"
+									onclick={() => handleRemoveRequest(request.id)}
+									aria-label="Remove"
 								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-									/>
-								</svg>
-							</button>
-							<button
-								type="button"
-								class="inline-block rounded-2xl text-sm focus:outline-none focus:ring"
-								onclick={() => handleRemoveRequest(request.id)}
-								aria-label="Remove"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="1.5"
-									stroke="currentColor"
-									class="size-6"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-									/>
-								</svg>
-							</button>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke-width="1.5"
+										stroke="currentColor"
+										class="size-6"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+										/>
+									</svg>
+								</button>
+							</div>
+							<h3 class="font-bold">{request.url}</h3>
+							<h4 class="text-xs">{request.method}</h4>
+							{#if request.body}
+								<pre class="text-xs">{request.body.substring(0, 100) + '...'}</pre>
+							{/if}
 						</div>
-						<h3 class="font-bold">{request.url}</h3>
-						<h4 class="text-xs">{request.method}</h4>
-						{#if request.body}
-							<pre class="text-xs">{request.body.substring(0, 100) + '...'}</pre>
-						{/if}
+						<div class="py-1">
+							<pre class="text-xs">{curls[index]}</pre>
+						</div>
 					</div>
-					<div class="py-1">
-						<pre class="text-xs">{curls[index]}</pre>
-					</div>
-				</div>
-			{/each}
+				{/each}
+			</div>
 		</div>
 	</div>
 
