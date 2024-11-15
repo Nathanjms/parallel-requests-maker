@@ -93,7 +93,7 @@
 		</p>
 	</div>
 	<div class="rounded-lg bg-gray-200 p-2">
-		<h2 class="text-xl font-bold">Build Requests</h2>
+		<h2 class="my-1 text-xl font-bold">Build Requests</h2>
 		<form onsubmit={addRequest}>
 			<div class="mb-1">
 				<label for="method" class="block text-sm font-medium text-gray-900">Method</label>
@@ -202,44 +202,54 @@
 	</div>
 
 	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<h2 class="text-xl font-bold">Script</h2>
+		<h2 class="my-1 text-xl font-bold">Parallel Requests Script</h2>
 		<div>
 			{#if requests.length === 0}
 				No Requests added yet, add at least 1 (or two to, you know, make this worthwhile) first.
 			{:else}
-				<button
-					class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
-					onclick={copyToClipboard}>Copy to Clipboard</button
-				>
-				{#if showParallelCurls}
-					<textarea class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
-						>{parallelCurls}</textarea
+				<div class="flex justify-between">
+					<button
+						onclick={() => (showParallelCurls = !showParallelCurls)}
+						class="inline-block rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+						type="submit">Show Content</button
 					>
+					<button
+						class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+						onclick={copyToClipboard}>Copy to Clipboard</button
+					>
+				</div>
+				{#if showParallelCurls}
+					<pre class="my-2 rounded-xl bg-slate-100 p-3 text-xs">{parallelCurls}</pre>
 				{/if}
 			{/if}
 		</div>
 	</div>
 
 	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<h2 class="text-xl font-bold">Requests</h2>
-		<div>
+		<h2 class="my-1 text-xl font-bold">Requests</h2>
+		<div class="grid grid-cols-2 gap-2">
 			{#if requests.length === 0}
 				No Requests added yet
 			{/if}
-			{#each requests as request}
-				<div class="my-2 rounded-lg bg-gray-300 p-2">
-					<h3 class="font-bold">{request.url}</h3>
-					<h4>{request.method}</h4>
-					{#if request.body}
-						<pre class="text-xs">{request.body.substring(0, 100) + '...'}</pre>
-					{/if}
+			{#each requests as request, index}
+				<div class="my-2 divide-y rounded-lg bg-gray-300 p-2">
+					<div class="py-1">
+						<h3 class="font-bold">{request.url}</h3>
+						<h4 class="text-xs">{request.method}</h4>
+						{#if request.body}
+							<pre class="text-xs">{request.body.substring(0, 100) + '...'}</pre>
+						{/if}
+					</div>
+					<div class="py-1">
+						<pre class="text-xs">{curls[index]}</pre>
+					</div>
 				</div>
 			{/each}
 		</div>
 	</div>
 
 	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<h2 class="text-xl font-bold">CURLs</h2>
+		<h2 class="my-1 text-xl font-bold">CURLs</h2>
 		<div class="grid grid-cols-2 gap-2">
 			{#if requests.length === 0}
 				No Requests added yet
