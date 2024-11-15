@@ -36,6 +36,7 @@
 	let requests = $state<RequestInterface[]>([]);
 	let formFields = $state<RequestInterface>(baseFormFields);
 	let showParallelCurls = $state<boolean>(false);
+	let clipboardStatusText = $state<string>('Copy to Clipboard');
 
 	onMount(() => {
 		requests = JSON.parse(window.localStorage.getItem('requests') || '[]');
@@ -65,28 +66,39 @@
 
 	const parallelCurls = $derived<string>(curls.join(' & \n') + '\nwait' + '\necho "Done!"');
 
-	function addRequest(e: Event) {
-		e.preventDefault();
-		console.log({ ...formFields });
-
+	function addRequest(clearForm: boolean) {
 		requests.push({ ...formFields });
 
-		formFields = { ...baseFormFields };
+		if (clearForm) {
+			formFields = { ...baseFormFields };
+		}
 
 		window.localStorage.setItem('requests', JSON.stringify(requests));
 	}
 
 	function copyToClipboard() {
 		navigator.clipboard.writeText(parallelCurls);
+
+		clipboardStatusText = 'Copied!';
+		setTimeout(() => {
+			clipboardStatusText = 'Copy to Clipboard';
+		}, 2000);
+	}
+
+	function resetRequests() {
+		if (confirm('Are you sure you want to clear all requests?')) {
+			requests = [];
+			window.localStorage.removeItem('requests');
+		}
 	}
 </script>
 
 <div class="container mx-auto my-2 px-2">
-	<div class="text-center">
+	<div class="mb-6 text-center">
 		<h1 class="text-3xl">Parallel Requests Builder</h1>
 		<p>Builds a series of <i>curl</i> commands in a script, so that they can be ran in parallel.</p>
 		<p>Runs entirely in your browser, so nothing is sent to a server.</p>
-		<p>
+		<p class="text-xs">
 			Github: <a class="link" href="https://github.com/NathanJms/parallel-requests-maker"
 				>https://github.com/NathanJms/parallel-requests-maker</a
 			>
@@ -94,111 +106,109 @@
 	</div>
 	<div class="rounded-lg bg-gray-200 p-2">
 		<h2 class="my-1 text-xl font-bold">Build Requests</h2>
-		<form onsubmit={addRequest}>
-			<div class="mb-1">
-				<label for="method" class="block text-sm font-medium text-gray-900">Method</label>
-				<select
-					bind:value={formFields.method}
-					required
-					id="method"
-					name="method"
-					class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
-				>
-					{#each HTTP_METHODS as method}
-						<option value={method}>{method}</option>
-					{/each}
-				</select>
-			</div>
-
-			<div class="mb-1">
-				<label for="url" class="block text-sm font-medium text-gray-900">URL</label>
-				<input
-					bind:value={formFields.url}
-					required
-					type="text"
-					id="url"
-					name="url"
-					class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
-				/>
-			</div>
-
-			<div class="mb-1">
-				<label for="headers" class="block text-sm font-medium text-gray-900">Headers</label>
-				{#each formFields.headers as header, index}
-					<div class="mb-1 flex gap-2">
-						<input
-							bind:value={header.key}
-							type="text"
-							list="headerKeyList"
-							id={`headers-key-${index}`}
-							placeholder="Key"
-							name="headers"
-							class="w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
-						/>
-						<input
-							bind:value={header.value}
-							type="text"
-							list="headerValueList"
-							id={`headers-value-${index}`}
-							placeholder="Value"
-							name="headers"
-							class="w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
-						/>
-						{#if formFields.headers.length > 1}
-							<button
-								type="button"
-								class="inline-block rounded border text-sm focus:outline-none focus:ring"
-								onclick={() => formFields.headers.splice(index, 1)}
-								aria-label="Remove"
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke-width="1.5"
-									stroke="currentColor"
-									class="size-6"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-									/>
-								</svg>
-							</button>
-						{/if}
-					</div>
+		<div class="mb-1">
+			<label for="method" class="block text-sm font-medium text-gray-900">Method</label>
+			<select
+				bind:value={formFields.method}
+				required
+				id="method"
+				name="method"
+				class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+			>
+				{#each HTTP_METHODS as method}
+					<option value={method}>{method}</option>
 				{/each}
-				<button
-					type="button"
-					class="mt-1 inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
-					onclick={() => formFields.headers.push({ key: '', value: '' })}>Add Header</button
-				>
-			</div>
+			</select>
+		</div>
 
-			<div class="mb-1">
-				<label for="body" class="block text-sm font-medium text-gray-900">Body</label>
-				<textarea
-					bind:value={formFields.body}
-					class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
-					id="body"
-					rows="3"
-				></textarea>
-			</div>
+		<div class="mb-1">
+			<label for="url" class="block text-sm font-medium text-gray-900">URL</label>
+			<input
+				bind:value={formFields.url}
+				required
+				type="text"
+				id="url"
+				name="url"
+				class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+			/>
+		</div>
 
-			<div class="flex justify-between">
-				<button
-					disabled={!canSubmit}
-					class="inline-block rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
-					type="submit">Add Request & Clear</button
-				>
-				<button
-					disabled={!canSubmit}
-					class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring disabled:opacity-50"
-					type="submit">Add Request</button
-				>
-			</div>
-		</form>
+		<div class="mb-1">
+			<label for="headers" class="block text-sm font-medium text-gray-900">Headers</label>
+			{#each formFields.headers as header, index}
+				<div class="mb-1 flex gap-2">
+					<input
+						bind:value={header.key}
+						type="text"
+						list="headerKeyList"
+						id={`headers-key-${index}`}
+						placeholder="Key"
+						name="headers"
+						class="w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+					/>
+					<input
+						bind:value={header.value}
+						type="text"
+						list="headerValueList"
+						id={`headers-value-${index}`}
+						placeholder="Value"
+						name="headers"
+						class="w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+					/>
+					{#if formFields.headers.length > 1}
+						<button
+							type="button"
+							class="inline-block rounded border text-sm focus:outline-none focus:ring"
+							onclick={() => formFields.headers.splice(index, 1)}
+							aria-label="Remove"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+								class="size-6"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+								/>
+							</svg>
+						</button>
+					{/if}
+				</div>
+			{/each}
+			<button
+				type="button"
+				class="mt-1 inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+				onclick={() => formFields.headers.push({ key: '', value: '' })}>Add Header</button
+			>
+		</div>
+
+		<div class="mb-1">
+			<label for="body" class="block text-sm font-medium text-gray-900">Body</label>
+			<textarea
+				bind:value={formFields.body}
+				class="mt-1.5 w-full rounded-lg border-gray-300 text-gray-700 sm:text-sm"
+				id="body"
+				rows="3"
+			></textarea>
+		</div>
+
+		<div class="flex justify-between">
+			<button
+				disabled={!canSubmit}
+				class="inline-block rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+				onclick={() => addRequest(true)}>Add Request & Clear</button
+			>
+			<button
+				disabled={!canSubmit}
+				class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring disabled:opacity-50"
+				onclick={() => addRequest(false)}>Add Request</button
+			>
+		</div>
 	</div>
 
 	<div class="mt-4 rounded-lg bg-gray-200 p-2">
@@ -207,15 +217,15 @@
 			{#if requests.length === 0}
 				No Requests added yet, add at least 1 (or two to, you know, make this worthwhile) first.
 			{:else}
-				<div class="flex justify-between">
+				<div class="flex gap-2">
 					<button
 						onclick={() => (showParallelCurls = !showParallelCurls)}
-						class="inline-block rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
+						class="inline-block flex-1 rounded border border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring disabled:opacity-50"
 						type="submit">Show Content</button
 					>
 					<button
-						class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
-						onclick={copyToClipboard}>Copy to Clipboard</button
+						class="inline-block flex-1 rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+						onclick={copyToClipboard}>{clipboardStatusText}</button
 					>
 				</div>
 				{#if showParallelCurls}
@@ -226,7 +236,13 @@
 	</div>
 
 	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<h2 class="my-1 text-xl font-bold">Requests</h2>
+		<div class="flex">
+			<h2 class="my-1 flex-grow text-xl font-bold">Requests</h2>
+			<button
+				class="inline-block rounded border border-gray-600 bg-gray-600 px-2 py-1 text-sm text-white focus:outline-none focus:ring"
+				onclick={resetRequests}>Clear</button
+			>
+		</div>
 		<div class="grid grid-cols-2 gap-2">
 			{#if requests.length === 0}
 				No Requests added yet
@@ -243,20 +259,6 @@
 					<div class="py-1">
 						<pre class="text-xs">{curls[index]}</pre>
 					</div>
-				</div>
-			{/each}
-		</div>
-	</div>
-
-	<div class="mt-4 rounded-lg bg-gray-200 p-2">
-		<h2 class="my-1 text-xl font-bold">CURLs</h2>
-		<div class="grid grid-cols-2 gap-2">
-			{#if requests.length === 0}
-				No Requests added yet
-			{/if}
-			{#each curls as curl}
-				<div class="my-2 rounded-lg bg-gray-300 p-2">
-					<pre class="text-xs">{curl}</pre>
 				</div>
 			{/each}
 		</div>
